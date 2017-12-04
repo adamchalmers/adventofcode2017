@@ -3,14 +3,20 @@ import Data.String.QQ
 import qualified Data.Set as Set
 import qualified Data.List as List
 
-validPassphrase :: (String -> String) -> String -> Bool
--- Maps all words in s over f, then checks all resulting words are unique.
-validPassphrase f s = (length . words $ s) == (length . Set.toList . Set.fromList . map f . words $ s)
+validPassphrase :: (String -> String) -> [String] -> Bool
+-- Apply f to all words in s. Are the resulting words unique?
+validPassphrase f = allUnique . map f
 
-day4soln1 = length $ filter (validPassphrase id) inputList
-day4soln2 = length $ filter (validPassphrase List.sort) inputList
+allUnique :: (Ord a) => [a] -> Bool
+allUnique xs = (length xs) == (length . Set.toList . Set.fromList $ xs)
 
-inputList = lines [s|nyot babgr babgr kqtu kqtu kzshonp ylyk psqk
+soln f = length $ filter (validPassphrase f) inputList
+
+day4soln1 = soln id
+day4soln2 = soln List.sort
+
+inputList :: [[String]]
+inputList = map words $ lines [s|nyot babgr babgr kqtu kqtu kzshonp ylyk psqk
 iix ewj rojvbkk phrij iix zuajnk tadv givslju ewj bda
 isjur jppvano vctnpjp ngwzdq pxqfrk mnxxes zqwgnd giqh
 ojufqke gpd olzirc jfao cjfh rcivvw pqqpudp
