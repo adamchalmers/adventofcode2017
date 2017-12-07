@@ -7,17 +7,17 @@ fn main() {
 }
 
 fn checksum(row: &Vec<i32>) -> i32 {
-	let mut max = &row[0];
-	let mut min = &row[0];
-	for num in row {
-		if num > max {
-			max = num
-		}
-		if num < min {
-			min = num
-		}
-	}
+	let max = fold1(row, |m, &x| if x > m { x } else { m }).unwrap();
+	let min = fold1(row, |m, &x| if x < m { x } else { m }).unwrap();
 	max - min
+}
+
+fn fold1<F>(nums: &Vec<i32>, f: F) -> Option<i32> where F: FnMut(i32, &i32) -> i32 {
+	let mut it = nums.iter();
+	match it.next() {
+		None => None,
+		Some(zero) => Some(it.fold(*zero, f)),
+	}
 }
 
 fn checksum2(row: &Vec<i32>) -> Option<i32> {
