@@ -1,51 +1,48 @@
 {-# LANGUAGE QuasiQuotes #-}
 import Data.String.QQ
-import Data.Map as M
-import Data.Maybe
+import Data.Map
+import Data.Monoid
+import Data.Semigroup
+import Control.Monad.Writer
 
-solve registers historicalMax [] = (maximum (elems registers), historicalMax)
-solve registers historicalMax (r:rs) = let
-    [register, operation, operand, _, lhs, relation, rhs] =
-        words r
-    rowCondition =
-        (relations relation) (valueIn lhs registers) (read rhs)
+type Registers = Map String Int
+
+-- Execute the instruction string on the registers.
+-- Outputs the new registers, using the Writer monad to keep track of the 
+-- maximum register value we've seen so far (for part 2)
+execute :: Registers -> String -> Writer (Max Int) Registers
+execute registers instruction = let
+    [regName, operation, amount, _, lhs, cmpSymbol, rhs] =
+        words instruction
+    cmp = 
+        funcFor cmpSymbol
     in
-        if rowCondition
+        if (findWithDefault 0 lhs registers) `cmp` (read rhs)
         then let   
             amountAddedToReg =
-                (read operand) * case operation of
+                (read amount) * case operation of
                     "inc" -> 1
                     "dec" -> -1
-            newRegisterValue =
-                (valueIn register registers) + amountAddedToReg
+            newRegValue =
+                (findWithDefault 0 regName registers) + amountAddedToReg
             registers' = 
-                insert register newRegisterValue registers
-            historicalMax' = 
-                max historicalMax newRegisterValue
-            in solve registers' historicalMax' rs
-        else solve registers historicalMax rs
+                insert regName newRegValue registers
+        in   writer (registers', Max newRegValue)
+        else writer (registers,  mempty)
 
-valueIn :: String -> Map String Int -> Int
-valueIn = findWithDefault 0
-
-relations "<" = (<)
-relations ">" = (>)
-relations "<=" = (<=)
-relations ">=" = (>=)
-relations "==" = (==)
-relations "!=" = (/=)
+funcFor "<"  = (<)
+funcFor ">"  = (>)
+funcFor "<=" = (<=)
+funcFor ">=" = (>=)
+funcFor "==" = (==)
+funcFor "!=" = (/=)
 
 main = do
-    let (soln1, soln2) = solve empty 0 hard
-    putStrLn $ "Soln 1 " ++ (show soln1)
-    putStrLn $ "Soln 2 " ++ (show soln2)
+    let (soln1, soln2) = runWriter $ foldM execute empty inputText
+    putStrLn $ "Part 1 " ++ (show $ maximum $ elems soln1)
+    putStrLn $ "Part 2 " ++ (show $ getMax soln2)
 
-easy = lines [s|b inc 5 if a > 1
-a inc 1 if b < 5
-c dec -10 if a >= 1
-c inc -20 if c == 10|]
-
-hard = lines [s|utc dec -736 if p > -7
+inputText = lines [s|utc dec -736 if p > -7
 tn inc -876 if qlm == 4
 uz dec 294 if l < 10
 a inc -904 if me >= -7
