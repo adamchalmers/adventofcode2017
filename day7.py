@@ -24,24 +24,41 @@ def soln2(rows):
 			total += actual_weight(tree[child])
 		return total
 
+	def balanced(node):
+		return classify_children(node)[0] == []
+
+	def classify_children(node):
+		children = (tree[child_name] for child_name in tree[node.name].children)
+		weight_of = {child.name: actual_weight(child) for child in children}
+
+		children_weighing = {}
+		for child, weight in weight_of.items():
+			if weight not in children_weighing:
+				children_weighing[weight] = []
+			children_weighing[weight].append(child)
+
+		minority = [c for (w,c) in children_weighing.items() if len(c) == 1]
+		majority = []
+		if minority:
+			majority = [c for (w,c) in children_weighing.items() if c != minority[0]]
+			return minority[0], majority[0]
+		return [], []
+		
+
+	def difference(mino, majo):
+		w_majo, w_mino = actual_weight(tree[majo[0]]), actual_weight(tree[mino[0]])
+		diff = w_mino - w_majo
+		return tree[mino[0]].weight - diff
+
+
 	for node in tree.values():
-		child_nodes = [tree[child] for child in node.children]
-		weights = defaultdict(list)
-		for child in child_nodes:
-			weights[actual_weight(child)].append(child) 
+		if not balanced(node):
+			print(f"{node.name} is unbalanced.")
+			mino, majo = classify_children(node)
+			print(f"Its children weigh {mino} and {majo}")
+			print(f"It should weigh {difference(mino, majo)}")
 
-		if len(weights) <= 1:
-			continue
-
-		minority_weight = [w for w in weights if len(weights[w]) == 1][0]
-		minority = weights[minority_weight][0]
-		majority_weight = [w for w in weights if w != minority_weight][0]
-		difference = majority_weight - minority_weight
-		return minority.weight + difference
-
-
-
-
+	return difference(mino, majo)
 
 def main():
 	tests()
@@ -54,9 +71,6 @@ def tests():
 	assert root(parse(EASY)) == "tknk"
 
 def parse(data):
-	return [parse_row(row) for row in data.split("\n")]
-
-def parse_row(row):
 
 	def parse_weight(row):
 		return int(RE_NUMS.findall(row)[0])
@@ -69,8 +83,7 @@ def parse_row(row):
 			return RE_HOLDING.findall(row)[0].split(", ")
 		return []
 
-	return (parse_name(row), parse_weight(row), parse_children(row))
-
+	return [(parse_name(row), parse_weight(row), parse_children(row)) for row in data.split("\n")]
 
 TINY = "fwft (72) -> ktlj, cntj, xhth"
 
