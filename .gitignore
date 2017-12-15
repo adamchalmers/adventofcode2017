@@ -3,3 +3,5 @@
 *.o
 *.dyn_hi
 *.prof
+**/target/
+**/*.rs.bk
