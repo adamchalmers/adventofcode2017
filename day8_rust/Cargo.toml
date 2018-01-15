@@ -1,0 +1,6 @@
+[package]
+name = "day8_rust"
+version = "0.1.0"
+authors = ["Adam Chalmers <adam.s.chalmers@gmail.com>"]
+
+[dependencies]
