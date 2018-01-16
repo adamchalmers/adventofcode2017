@@ -1,58 +1,38 @@
 use std::collections::HashMap;
 
 fn main() {
-    let mut registers: HashMap<&str, i32> = HashMap::new();
-    let mut max_during = 0;
+    let mut registers: HashMap<String, i32> = HashMap::new();
+    let instructions = include_str!("input.txt")
+        .split("\n")
+        .map(|line| Instruction::from(line));
 
-    for line in include_str!("input.txt").split("\n") {
-        let instruction = Instruction::from(line);
-        let curr_val: i32;
-        {
-            curr_val = *registers.get(instruction.lhs).unwrap_or(&0);
-        }
+    let max_during = instructions.map(|i| i.apply_to(&mut registers)).max();
+    let max_final = registers.values().max();
 
-        if !instruction.should_execute(&curr_val) {
-            continue;
-        }
-
-        let entry = registers.entry(instruction.register_id).or_insert(0);
-        *entry += instruction.amount_added();
-        if *entry > max_during {
-            max_during = *entry;
-        }
-    }
-
-    let mut max_final = 0;
-    for val in registers.values() {
-        if *val > max_final {
-            max_final = *val;
-        }
-    }
-
-    println!("Largest value after program: {}", max_final);
-    println!("Largest value during program: {}", max_during);
+    println!("Largest value stored after running program: {}", max_final.unwrap());
+    println!("Largest value stored while running program: {}", max_during.unwrap());
 
 }
 
-struct Instruction<'a> {
-    register_id: &'a str,
-    op: &'a str,
+struct Instruction {
+    register_id: String,
+    op: String,
     amount: i32,
-    lhs: &'a str,
-    cmp_symbol: &'a str,
+    lhs: String,
+    cmp_symbol: String,
     rhs: i32,
 }
 
-impl<'a> Instruction<'a> {
+impl Instruction {
 
-    fn from(line: &'a str) -> Instruction<'a> {
+    fn from(line: &str) -> Instruction {
         let mut it = line.split(" ");
-        let register_id = it.next().unwrap();
-        let op = it.next().unwrap();
+        let register_id = it.next().unwrap().to_string();
+        let op = it.next().unwrap().to_string();
         let amount = it.next().unwrap().parse::<i32>().unwrap();
         it.next();
-        let lhs = it.next().unwrap().clone();
-        let cmp_symbol = it.next().unwrap();
+        let lhs = it.next().unwrap().to_string();
+        let cmp_symbol = it.next().unwrap().to_string();
         let rhs = it.next().unwrap().parse::<i32>().unwrap();
         return Instruction {
             register_id,
@@ -64,8 +44,25 @@ impl<'a> Instruction<'a> {
         }
     }
 
+    fn apply_to(&self, registers: &mut HashMap<String, i32>) -> i32 {
+        let curr_val: i32;
+        {
+            let lhs: &str = self.lhs.as_ref();
+            curr_val = *registers.get(lhs).unwrap_or(&0);
+        }
+
+        if !self.should_execute(&curr_val) {
+            return i32::min_value();
+        }
+
+        let register_id = self.register_id.clone();
+        let entry = registers.entry(register_id).or_insert(0);
+        *entry += self.amount_added();
+        *entry
+    }
+
     fn should_execute(&self, curr_val: &i32) -> bool {
-        match self.cmp_symbol {
+        match self.cmp_symbol.as_ref() {
             "<" => *curr_val < self.rhs,
             ">" => *curr_val > self.rhs,
             "<=" => *curr_val <= self.rhs,
@@ -77,7 +74,7 @@ impl<'a> Instruction<'a> {
     }
 
     fn amount_added(&self) -> i32 {
-        self.amount * match self.op {
+        self.amount * match self.op.as_ref() {
             "inc" => 1,
             "dec" => -1,
             _ => panic!("bad op"),
