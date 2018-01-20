@@ -1,14 +1,17 @@
+use std::iter::Zip;
+use std::slice::Iter;
+use std::vec::IntoIter;
+
+type PairsIter<'a, T> = Zip<Iter<'a, T>, IntoIter<T>>;
+
 fn rotate<T: Copy>(n: usize, list: &Vec<T>) -> Vec<T> {
 	let (a, b) = list.split_at(list.len() - n);
-	let mut output: Vec<T> = vec![];
-	output.extend(b);
-	output.extend(a);
-	output
+	[&b[..], &a[..]].concat()
 }
 
-fn pairs<T: Copy>(n: usize, list: &Vec<T>) -> Vec<(&T, T)> {
+fn pairs<T: Copy>(n: usize, list: &Vec<T>) -> PairsIter<T> {
 	let rot = rotate(n, list);
-	list.iter().zip(rot).collect()
+	list.iter().zip(rot)
 }
 
 fn if_same(x: char, y: char) -> u32 {
@@ -20,7 +23,7 @@ fn if_same(x: char, y: char) -> u32 {
 
 fn soln(text: &str, n: usize) -> u32 {
 	let text = &text.chars().collect();
-	pairs(n, text).iter().map(|p| if_same(*p.0, p.1)).sum()
+	pairs(n, text).map(|(a,b)| if_same(*a, b)).sum()
 }
 
 fn main() {
