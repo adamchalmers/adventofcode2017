@@ -1,31 +1,34 @@
 {-# LANGUAGE QuasiQuotes #-}
 import Data.String.QQ
-import Data.Vector.Unboxed as V
+import Data.Vector.Unboxed.Mutable as VM
+import Data.Vector.Unboxed as V hiding ((++))
+import Control.Monad.Primitive
 
-jump :: (Int -> Int) -> Int -> Int -> Vector Int -> Int
-jump offset curr t vec =
-    let
-        currVal = (vec ! curr)
-        curr' = curr + currVal
-        vec' = vec // [(curr, offset currVal)]
-    in
-        if curr >= (V.length vec)
-        then t + 1
-        else jump offset curr' (t + 1) vec'
+type MutVecInt = MVector (PrimState IO) Int
+
+jump :: (Int -> Int) -> Int -> Int -> MutVecInt -> IO Int
+jump offset curr t vec = do
+    currVal <- VM.read vec curr
+    let curr' = curr + currVal
+    VM.write vec curr (offset currVal)
+
+    if curr' >= (VM.length vec)
+    then return (t + 1)
+    else jump offset curr' (t + 1) vec
 
 offset1 i = i + 1
 offset2 i = if i >= 3 then i-1 else i+1
 
-soln :: (Int -> Int) -> Vector Int -> Int
-soln offset =
-    jump offset 0 0
+soln :: (Int -> Int) -> Vector Int -> IO Int
+soln offset input =
+    (thaw input) >>= (jump offset 0 0)
 
 main = do
-    print $ soln offset1 input
-    print $ soln offset2 input
+    print =<< soln offset1 input
+    print =<< soln offset2 input
 
 input :: Vector Int
-input = fromList $ Prelude.map read $ lines [s|2
+input = V.fromList $ Prelude.map Prelude.read $ lines [s|2
 2
 0
 0
