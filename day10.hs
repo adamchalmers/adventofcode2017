@@ -1,90 +1,65 @@
-import Data.Char
-import Data.Bits
-import Prelude hiding (group)
-import Numeric (showHex, showIntAtBase)
+import Data.Char (ord)
+import Data.Bits (xor)
+import Numeric (showHex)
+import Data.List.Split (splitOn)
 
-type NumRange = [Int]
+allBytes = Sparse [0..255]
+numBytes = 256
 
-multiHash :: NumRange -> [Int] -> NumRange
-multiHash nums lens =
-    multiHash' 0 0 nums lens 16
+newtype SparseHash = Sparse [Int]
 
-group :: Int -> [Int] -> [[Int]]
-group n = foldr f [] where
+partition :: Int -> [Int] -> [[Int]]
+-- Partition input list into sublists of length k
+partition k = foldr f [] where
     f x [] = [[x]]
     f x output@(o:os) =
-        if (length o) == n
+        if (length o) == k
         then ([x]):output
         else (x:o):os
 
-showHex' i = twoLong (showHex i "")
-twoLong [x] = "0" ++ [x]
-twoLong xs = xs
-
 showDense :: [Int] -> String
-showDense xs = concat $ map showHex' xs
+-- Format a dense hash as a hex string
+showDense xs = concat $ map (\i -> twoLong (showHex i "")) xs where
+    twoLong [x] = "0" ++ [x]
+    twoLong xs = xs
 
-sparseToDense :: NumRange -> [Int]
-sparseToDense sparse = map (foldr1 xor) (group 16 sparse)
+sparseToDense :: SparseHash -> [Int]
+sparseToDense (Sparse nums) = map (foldr1 xor) (partition 16 nums)
 
-multiHash' :: Int -> Int -> NumRange -> [Int] -> Int -> NumRange
-multiHash' curr skip nums lens 0 = nums
-multiHash' curr skip nums lens n = 
-    multiHash' curr' skip' nums' lens (n-1)
-    where
-        (nums', curr', skip') = twist curr skip nums lens
+multiHash :: [Int] -> Int -> SparseHash
+-- Run multiple rounds of the hashing algorithm
+multiHash lens numRounds = let
+    mh _ _ sparseHash _ 0 = sparseHash
+    mh curr skip sparseHash lens n =
+        mh curr' skip' sparseHash' lens (n-1) where
+            (sparseHash', curr', skip') = hash lens curr skip sparseHash
+    in
+    mh 0 0 allBytes (lens ++ [17, 31, 73, 47, 23]) numRounds where
 
-hash curr skip nums lens = p * q
-    where
-        (p:q:_) = fst $ twist curr skip nums lens
-        fst (x,_,_) = x
+hash :: [Int] -> Int -> Int -> SparseHash -> (SparseHash, Int, Int)
+-- Run one round of the hashing algorithm
+hash lens curr skip nums = foldl acc (nums, curr, skip) lens where
+    acc (nums, curr, skip) len = (nums', curr', skip') where
+        nums' = twist curr len nums
+        curr' = (curr + len + skip) `rem` numBytes
+        skip' = (skip + 1)          `rem` numBytes
 
-twist :: Int -> Int -> NumRange -> [Int] -> (NumRange, Int, Int)
-twist curr skip nums lens = foldl (twistAcc) (nums, curr, skip) lens
-
-twistAcc :: (NumRange, Int, Int) -> Int -> (NumRange, Int, Int)
-twistAcc (nums, curr, skip) len = (nums', curr', skip') where
-    n     = length nums
-    nums' = reverseFrom nums curr len
-    curr' = (curr + len + skip) `rem` n
-    skip' = (skip + 1)          `rem` n
-
--- Reverse the list from element #i to #(i + len), working circularly.
-reverseFrom :: NumRange -> Int -> Int -> [Int]
-reverseFrom nums i len = 
-    (rotR i) . (reverseFirst len) . (rotL i) $ nums
-    where
+twist :: Int -> Int -> SparseHash -> SparseHash
+-- The 'pinch-and-twist' permutation described in the problem
+twist i len (Sparse nums) =
+    Sparse . (rotR i) . (reverseFirst len) . (rotL i) $ nums where
         reverseFirst n list = (reverse $ take n list) ++ drop n list
         rotL i list         = (drop i list) ++ (take i list)
         rotR i list         = rotL ((length list) - i) list
 
+getSoln :: (SparseHash, Int, Int) -> Int
+getSoln = foldr1 (*) . take 2 . (\(Sparse xs,_,_) -> xs)
+
 main = do
-    unitTests
-    let input = [225,171,131,2,35,5,0,13,1,246,54,97,255,98,254,110]
-    let soln1 = hash 0 0 [0..255] input
-    putStrLn $ "Soln1: " ++ (show soln1)
-    --soln2
-    let inputAscii = (map ord "225,171,131,2,35,5,0,13,1,246,54,97,255,98,254,110") ++ [17,31,83,47,23]
-    let soln2 = showDense $ sparseToDense $ multiHash [0..255] inputAscii
+    let input = "225,171,131,2,35,5,0,13,1,246,54,97,255,98,254,110"
+    let inputInts = map read $ splitOn "," input :: [Int]
+    let soln1 = hash inputInts 0 0 allBytes
+    putStrLn $ "Soln1: " ++ (show $ getSoln soln1)
+    let inputAscii = map ord input
+    let soln2 = showDense $ sparseToDense $ multiHash inputAscii 64
     putStrLn $ "Soln2: " ++ (soln2)
-
-unitTests = do
-    print $ (reverseFrom [0..4]      0 3) == [2,1,0,3,4]
-    print $ (reverseFrom [2,1,0,3,4] 3 4) == [4,3,0,1,2]
-    print $ (reverseFrom [4,3,0,1,2] 3 1) == [4,3,0,1,2]
-    print $ (reverseFrom [4,3,0,1,2] 1 5) == [3,4,2,1,0]
-
-    print $ (twistAcc ([0..4],      0, 0) 3) == ([2,1,0,3,4], 3, 1)
-    print $ (twistAcc ([2,1,0,3,4], 3, 1) 4) == ([4,3,0,1,2], 3, 2)
-    print $ (twistAcc ([4,3,0,1,2], 3, 2) 1) == ([4,3,0,1,2], 1, 3)
-    print $ (twistAcc ([4,3,0,1,2], 1, 3) 5) == ([3,4,2,1,0], 4, 4)
-
-    print $ (twist 0 0 [0..4] [3,4,1,5]) == ([3,4,2,1,0], 4, 4)
-    print $ (hash 0 0 [0..4] [3,4,1,5]) == 12
-
-    print $ group 16 [0..15] == [[0..15]]
-    print $ group 16 [0..31] == [[0..15], [16..31]]
-
-    let someInts = [65,27,9,1,4,3,40,50,91,7,6,0,2,5,68,22] :: [Int]
-    print $ (foldr1 xor someInts) == 64
-
