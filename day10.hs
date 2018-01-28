@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 import Data.Char (ord)
 import Data.Bits (xor)
 import Numeric (showHex)
@@ -6,7 +8,8 @@ import Data.List.Split (splitOn)
 allBytes = Sparse [0..255]
 numBytes = 256
 
-newtype SparseHash = Sparse [Int]
+newtype Sparse a = Sparse a deriving (Eq, Functor)
+type SparseHash = Sparse [Int]
 
 partition :: Int -> [Int] -> [[Int]]
 -- Partition input list into sublists of length k
@@ -46,8 +49,8 @@ hash lens curr skip nums = foldl acc (nums, curr, skip) lens where
 
 twist :: Int -> Int -> SparseHash -> SparseHash
 -- The 'pinch-and-twist' permutation described in the problem
-twist i len (Sparse nums) =
-    Sparse . (rotR i) . (reverseFirst len) . (rotL i) $ nums where
+twist i len =
+    fmap $ (rotR i) . (reverseFirst len) . (rotL i) where
         reverseFirst n list = (reverse $ take n list) ++ drop n list
         rotL i list         = (drop i list) ++ (take i list)
         rotR i list         = rotL ((length list) - i) list
