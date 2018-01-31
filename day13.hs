@@ -1,3 +1,5 @@
+import Data.List
+
 data Dir = Up | Down
 
 data Layer = Layer
@@ -10,26 +12,33 @@ data Layer = Layer
 instance Show Layer where
     show l = "{R: " ++ show (range l) ++ " P: " ++ show (pos l) ++ " D: " ++ show (depth l) ++ "}\n"
 
-initL (r,d) = Layer 
+initL (r,d) = Layer
     { depth=d
     , pos=0
     , dir=Down
     , range=r
     }
 
-atTop    l = (pos l) == 0
-atBottom l = (pos l) == (depth l - 1)
-
-tickL :: Layer -> Layer
-tickL l = case dir l of
-    Down -> 
-        if atBottom l
+tick :: Layer -> Layer
+tick l = case dir l of
+    Down ->
+        if atBottom
         then l { pos=(pos l - 1), dir=Up }
         else l { pos=(pos l + 1) }
-    Up -> 
-        if atTop l
+    Up ->
+        if atTop
         then l { pos=(pos l + 1), dir=Down }
         else l { pos=(pos l - 1) }
+    where
+        atTop    = (pos l) == 0
+        atBottom = (pos l) == (depth l - 1)
+
+tickN :: Int -> Layer -> Layer
+-- Just like apply `tick` n times, but optimized.
+tickN n l = (iterate tick l) !! (n `rem` d)
+    where
+        -- Guards repeat their steps every (2*depth - 2) ticks,
+        d = 2 * (depth l) - 2
 
 severityAt :: Layer -> Int
 severityAt layer =
@@ -40,19 +49,31 @@ severityAt layer =
 initFW :: [(Int, Int)] -> [Layer]
 initFW = map initL
 
-fwOverTime :: [Layer] -> [Layer]
--- Applies `tick` to each layer `r` times, where `r` is the layer's range.
-fwOverTime = map (\layer -> (iterate tickL layer) !! (range layer))
+fwOverTime :: Int -> [Layer] -> [Layer]
+-- Applies `tick` to each layer `r` times
+-- where r is the layer's range, plus t
+fwOverTime offset = map (\l -> tickN ((range l) + offset) l)
 
 totalSeverity :: [Layer] -> Int
 totalSeverity = (foldr1 (+)) . (map severityAt)
-        
-main = do
-    print $ 24 == (totalSeverity $ fwOverTime $ initFW [(0,3),(1,2),(4,4),(6,4)])
-    let soln1 = totalSeverity $ fwOverTime $ initFW inputData
-    putStrLn $ "Soln 1: " ++ show soln1
 
-inputData :: [(Int, Int)]
+soln1 = totalSeverity . (fwOverTime 0)
+soln2 fw = (fmap fst) . (find notCaught) . map (\t -> (t, fwOverTime t fw)) $ [0..]
+
+notCaught :: (Int, [Layer]) -> Bool
+notCaught (t, fw) = all (\l -> (pos l) /= 0) fw
+
+main = do
+    unitTests
+    let fw = initFW inputData
+    putStrLn $ "Soln 1: " ++ show (soln1 fw)
+    putStrLn $ "Soln 2: " ++ show (soln2 fw)
+
+unitTests = do
+    let testFW = initFW [(0,3),(1,2),(4,4),(6,4)]
+    print $ 24 == (soln1 testFW)
+    print $ (Just 10) == (soln2 testFW)
+
 inputData = [
     (0, 4),
     (1, 2),
