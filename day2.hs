@@ -6,9 +6,9 @@ import Data.List
 
 
 cartesian xs = (,) <$> xs <*> xs
-maxMinDiff xs = (foldr1 max xs) - (foldr1 min xs)
+maxMinDiff xs = maximum xs - minimum xs
 divides (x,y) = (x > y) && (x `rem` y == 0)
-divSum = (\(x, y) -> x `div` y) . fromJust . find divides . cartesian
+divSum = uncurry div . fromJust . find divides . cartesian
 
 soln f = sum $ map (f . map (read :: String -> Int) . words) inputText
 

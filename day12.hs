@@ -10,12 +10,12 @@ groupOf :: Int -> Set Int
 groupOf num = fullConnections (Set.singleton num)
 
 groupsOf :: Set Int -> Set (Set Int)
-groupsOf nums = Set.map groupOf nums
+groupsOf = Set.map groupOf
 
 fullConnections :: Set Int -> Set Int
 fullConnections ingroup =
     let
-        connectionsOf = catMaybes . Set.toList . (Set.map (\k -> Map.lookup k $ inputText))
+        connectionsOf = catMaybes . Set.toList . Set.map (\k -> Map.lookup k inputText)
         fringe = Set.fromList $ concat $ connectionsOf ingroup
         ingroup' = ingroup `Set.union` fringe
     in
@@ -25,17 +25,17 @@ fullConnections ingroup =
 
 allPeople :: Set Int
 allPeople =
-    Set.fromList $ concat $ List.map snd $ Map.toList inputText
+    Set.fromList $ concatMap snd $ Map.toList inputText
 
 main = do
     print $ Set.size $ groupOf 0
     print $ Set.size $ groupsOf allPeople
 
-parseInput = Map.fromList . List.map parseRow . lines 
+parseInput = Map.fromList . List.map parseRow . lines
 
-parseRow =  
-    ( \[a,b] -> (read $ a !! 0, List.map read b)) 
-    . List.map (splitOn ", ") 
+parseRow =
+    ( \[a,b] -> (read $ head a, List.map read b))
+    . List.map (splitOn ", ")
     . splitOn " <-> "
 
 inputText = parseInput [s|0 <-> 122, 874, 1940

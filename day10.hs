@@ -16,13 +16,13 @@ partition :: Int -> [Int] -> [[Int]]
 partition k = foldr f [] where
     f x [] = [[x]]
     f x output@(o:os) =
-        if (length o) == k
-        then ([x]):output
+        if length o == k
+        then [x]:output
         else (x:o):os
 
 showDense :: [Int] -> String
 -- Format a dense hash as a hex string
-showDense xs = concat $ map (\i -> twoLong (showHex i "")) xs where
+showDense = concatMap (\i -> twoLong (showHex i "")) where
     twoLong [x] = "0" ++ [x]
     twoLong xs = xs
 
@@ -37,7 +37,7 @@ multiHash lens numRounds = let
         mh curr' skip' sparseHash' lens (n-1) where
             (sparseHash', curr', skip') = hash lens curr skip sparseHash
     in
-    mh 0 0 allBytes (lens ++ [17, 31, 73, 47, 23]) numRounds where
+    mh 0 0 allBytes (lens ++ [17, 31, 73, 47, 23]) numRounds
 
 hash :: [Int] -> Int -> Int -> SparseHash -> (SparseHash, Int, Int)
 -- Run one round of the hashing algorithm
@@ -50,19 +50,19 @@ hash lens curr skip nums = foldl acc (nums, curr, skip) lens where
 twist :: Int -> Int -> SparseHash -> SparseHash
 -- The 'pinch-and-twist' permutation described in the problem
 twist i len =
-    fmap $ (rotR i) . (reverseFirst len) . (rotL i) where
-        reverseFirst n list = (reverse $ take n list) ++ drop n list
-        rotL i list         = (drop i list) ++ (take i list)
-        rotR i list         = rotL ((length list) - i) list
+    fmap $ rotR i . reverseFirst len . rotL i where
+        reverseFirst n list = reverse (take n list) ++ drop n list
+        rotL i list         = drop i list ++ take i list
+        rotR i list         = rotL (length list - i) list
 
 getSoln :: (SparseHash, Int, Int) -> Int
-getSoln = foldr1 (*) . take 2 . (\(Sparse xs,_,_) -> xs)
+getSoln = product . take 2 . (\(Sparse xs,_,_) -> xs)
 
 main = do
     let input = "225,171,131,2,35,5,0,13,1,246,54,97,255,98,254,110"
     let inputInts = map read $ splitOn "," input :: [Int]
     let soln1 = hash inputInts 0 0 allBytes
-    putStrLn $ "Soln1: " ++ (show $ getSoln soln1)
+    putStrLn $ "Soln1: " ++ show (getSoln soln1)
     let inputAscii = map ord input
     let soln2 = showDense $ sparseToDense $ multiHash inputAscii 64
-    putStrLn $ "Soln2: " ++ (soln2)
+    putStrLn $ "Soln2: " ++ soln2

@@ -8,24 +8,24 @@ import Control.Monad.Writer
 type Registers = Map String Int
 
 -- Execute the instruction string on the registers.
--- Outputs the new registers, using the Writer monad to keep track of the 
+-- Outputs the new registers, using the Writer monad to keep track of the
 -- maximum register value we've seen so far (for part 2)
 execute :: Registers -> String -> Writer (Max Int) Registers
 execute registers instruction = let
     [regName, operation, amount, _, lhs, cmpSymbol, rhs] =
         words instruction
-    cmp = 
+    cmp =
         funcFor cmpSymbol
     in
         if (findWithDefault 0 lhs registers) `cmp` (read rhs)
-        then let   
+        then let
             amountAddedToReg =
-                (read amount) * case operation of
+                read amount * case operation of
                     "inc" -> 1
                     "dec" -> -1
             newRegValue =
                 (findWithDefault 0 regName registers) + amountAddedToReg
-            registers' = 
+            registers' =
                 insert regName newRegValue registers
         in   writer (registers', Max newRegValue)
         else writer (registers,  mempty)
@@ -39,8 +39,8 @@ funcFor "!=" = (/=)
 
 main = do
     let (soln1, soln2) = runWriter $ foldM execute empty inputText
-    putStrLn $ "Part 1 " ++ (show $ maximum $ elems soln1)
-    putStrLn $ "Part 2 " ++ (show $ getMax soln2)
+    putStrLn $ "Part 1 " ++ show (maximum $ elems soln1)
+    putStrLn $ "Part 2 " ++ show (getMax soln2)
 
 inputText = lines [s|utc dec -736 if p > -7
 tn inc -876 if qlm == 4

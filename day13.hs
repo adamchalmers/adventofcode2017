@@ -23,27 +23,27 @@ tick :: Layer -> Layer
 tick l = case dir l of
     Down ->
         if atBottom
-        then l { pos=(pos l - 1), dir=Up }
-        else l { pos=(pos l + 1) }
+        then l { pos=pos l - 1, dir=Up }
+        else l { pos=pos l + 1 }
     Up ->
         if atTop
-        then l { pos=(pos l + 1), dir=Down }
-        else l { pos=(pos l - 1) }
+        then l { pos=pos l + 1, dir=Down }
+        else l { pos=pos l - 1 }
     where
-        atTop    = (pos l) == 0
-        atBottom = (pos l) == (depth l - 1)
+        atTop    = pos l == 0
+        atBottom = pos l == (depth l - 1)
 
 tickN :: Int -> Layer -> Layer
 -- Just like apply `tick` n times, but optimized.
 tickN n l = (iterate tick l) !! (n `rem` d)
     where
         -- Guards repeat their steps every (2*depth - 2) ticks,
-        d = 2 * (depth l) - 2
+        d = 2 * depth l - 2
 
 severityAt :: Layer -> Int
 severityAt layer =
-    if (pos layer) == 0
-    then (depth layer) * (range layer)
+    if pos layer == 0
+    then depth layer * range layer
     else 0
 
 initFW :: [(Int, Int)] -> [Layer]
@@ -52,16 +52,16 @@ initFW = map initL
 fwOverTime :: Int -> [Layer] -> [Layer]
 -- Applies `tick` to each layer `r` times
 -- where r is the layer's range, plus t
-fwOverTime offset = map (\l -> tickN ((range l) + offset) l)
+fwOverTime offset = map (\l -> tickN (range l + offset) l)
 
 totalSeverity :: [Layer] -> Int
-totalSeverity = (foldr1 (+)) . (map severityAt)
+totalSeverity = sum . map severityAt
 
-soln1 = totalSeverity . (fwOverTime 0)
-soln2 fw = (fmap fst) . (find notCaught) . map (\t -> (t, fwOverTime t fw)) $ [0..]
+soln1 = totalSeverity . fwOverTime 0
+soln2 fw = fmap fst . find notCaught . map (\t -> (t, fwOverTime t fw)) $ [0..]
 
 notCaught :: (Int, [Layer]) -> Bool
-notCaught (t, fw) = all (\l -> (pos l) /= 0) fw
+notCaught (t, fw) = all (\l -> pos l /= 0) fw
 
 main = do
     unitTests
@@ -71,8 +71,8 @@ main = do
 
 unitTests = do
     let testFW = initFW [(0,3),(1,2),(4,4),(6,4)]
-    print $ 24 == (soln1 testFW)
-    print $ (Just 10) == (soln2 testFW)
+    print $ 24 == soln1 testFW
+    print $ Just 10 == soln2 testFW
 
 inputData = [
     (0, 4),

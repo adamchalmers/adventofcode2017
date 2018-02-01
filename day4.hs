@@ -8,7 +8,7 @@ validPassphrase :: (String -> String) -> [String] -> Bool
 validPassphrase f = allUnique . map f
 
 allUnique :: (Ord a) => [a] -> Bool
-allUnique xs = (length xs) == (length . Set.toList . Set.fromList $ xs)
+allUnique xs = length xs == (length . Set.toList . Set.fromList $ xs)
 
 soln f = length $ filter (validPassphrase f) inputList
 
