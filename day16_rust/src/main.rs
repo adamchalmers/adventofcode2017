@@ -7,16 +7,15 @@ fn main() {
     let ring = String::from("abcdefghijklmnop");
     let ring_after_dance = instrs.iter().fold(ring.clone(), acc);
 
-    print!("Solution 1: {}\n", ring_after_dance);
+    println!("Solution 1: {}", ring_after_dance);
 
-    let k = cycle_size(&ring, &instrs);
-    print!("Cycle size: {}\n", k);
     let mut curr = ring.clone();
-    for _ in 0..((10^9) % k) {
-        // print!("{}\n", curr);
+    let ten: i32 = 10;
+    let n = ten.pow(9) % cycle_size(&ring, &instrs);
+    for _ in 0..n {
         curr = instrs.iter().fold(curr, acc);
     }
-    print!("Solution 2: {}\n", curr);
+    println!("Solution 2: {}", curr);
 }
 
 fn cycle_size(goal: &str, instrs: &Vec<Instruction>) -> i32 {
@@ -54,7 +53,7 @@ impl Instruction {
             'p' =>
                 Instruction::Partner(parts[0].chars().next().unwrap(), parts[1].chars().next().unwrap()),
             other =>
-                panic!(format!("Unexpected dance move start {}", other))
+                panic!(format!("Unexpected dance move starts with '{}'", other))
         }
     }
 
