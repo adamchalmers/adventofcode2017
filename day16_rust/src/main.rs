@@ -8,7 +8,15 @@ fn main() {
     let ring_after_dance = instrs.iter().fold(ring.clone(), acc);
 
     print!("Solution 1: {}\n", ring_after_dance);
-    print!("Cycle size: {}\n", cycle_size(&ring, &instrs));
+
+    let k = cycle_size(&ring, &instrs);
+    print!("Cycle size: {}\n", k);
+    let mut curr = ring.clone();
+    for _ in 0..((10^9) % k) {
+        // print!("{}\n", curr);
+        curr = instrs.iter().fold(curr, acc);
+    }
+    print!("Solution 2: {}\n", curr);
 }
 
 fn cycle_size(goal: &str, instrs: &Vec<Instruction>) -> i32 {
