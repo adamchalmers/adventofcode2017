@@ -1,18 +1,15 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 import Data.String.QQ
+import Data.Semigroup
 
 -------------------------------------------------------------------------------
 -- Tree data structure
 
-newtype Tree = Node [Tree] deriving (Eq, Show)
+newtype Tree = Node [Tree]
 
-leaf :: Tree
-leaf = Node []
-
-addChild :: Tree -> Tree -> Tree
-addChild (Node children) newChild = Node (children ++ [newChild])
-
+instance Semigroup Tree where
+    (Node children) <> newChild = Node $ newChild:children
 
 -------------------------------------------------------------------------------
 -- Parsing the stream
@@ -22,14 +19,14 @@ parse :: String -> (Tree, Int)
 parse s =
     (head leaves, n)
     where
-        (Node leaves, s', n) = eatGroups leaf s 0
+        (Node leaves, s', n) = eatGroups (Node []) s 0
 
 eatGroups :: Tree -> String -> Int -> (Tree, String, Int)
 eatGroups t "" n =
     (t, "", n)
 eatGroups t (x:xs) n = case x of
     '{' ->
-        eatGroups (addChild t tree) xs' n'
+        eatGroups (t <> tree) xs' n'
         where (tree, xs', n') = eatGroups (Node []) xs n
     '}' ->
         (t, xs, n)
