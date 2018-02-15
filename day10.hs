@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 
+module KnotHash (knotHash) where
+
 import Data.Char (ord)
 import Data.Bits (xor)
 import Numeric (showHex)
@@ -54,6 +56,9 @@ twist i len =
         reverseFirst n list = reverse (take n list) ++ drop n list
         rotL i list         = drop i list ++ take i list
         rotR i list         = rotL (length list - i) list
+
+knotHash :: String -> String
+knotHash input = showDense . sparseToDense $ multiHash (map ord input) 64
 
 getSoln :: (SparseHash, Int, Int) -> Int
 getSoln = product . take 2 . (\(Sparse xs,_,_) -> xs)
