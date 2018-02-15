@@ -2,15 +2,17 @@
 
 import KnotHash
 import Control.Monad as M
+import Data.Vector as V
+import qualified Data.List as L
+import Prelude hiding (map, filter, length, (++), concatMap, sum)
 
 data Cell = Free | Used | Group Int deriving (Eq)
 
-makeGrid :: String -> [[Cell]]
-makeGrid s = map (toRow . makeInput) [0..127] where
+makeGrid s = map (toRow . makeInput) (fromList [0..127]) where
     makeInput i =
-        s ++ "-" ++ show i
+        s ++ singleton '-' ++ (fromList $ show i)
     toRow =
-        (concatMap ((map f) . hexToBin)) . knotHash
+        (concatMap (fromList . (L.map f) . hexToBin)) . (fromList . knotHash . toList)
     f = \case
         '0' -> Free
         '1' -> Used
@@ -33,7 +35,7 @@ makeGrid s = map (toRow . makeInput) [0..127] where
         'f' -> "1111"
 
 main = do
-    let grid = makeGrid "jxqlasbh"
+    let grid = makeGrid $ fromList "jxqlasbh"
     putStrLn "Soln1"
     print $ sum $ map (length . filter (== Used)) grid
 
