@@ -6,14 +6,13 @@ import Data.Vector as V
 import qualified Data.List as L
 import Prelude hiding (map, filter, length, (++), concatMap, sum, take)
 
-data Cell = Free | Used | Group Int deriving (Eq)
+data Cell = Free | Used deriving (Eq)
 instance Show Cell where
     show Free = "."
     show Used = "#"
-    show (Group n) = show n
 
-type Counter = Int
-type Answer = Int
+type Grid a = Vector (Vector a)
+type Point = (Int, Int)
 
 makeGrid s = map (toRow . makeInput) (fromList [0..127]) where
     makeInput i =
@@ -41,52 +40,33 @@ makeGrid s = map (toRow . makeInput) (fromList [0..127]) where
         'e' -> "1110"
         'f' -> "1111"
 
-index grid x y = (grid ! x) ! y
+index grid (x,y) = (grid ! x) ! y
 
-labelGrid grid = labelGrid' grid 0 0 1
+countCC :: Grid Cell -> Int
+countCC grid = labelGrid grid (0,0) 1
 
-labelGrid' grid 127 127 v = (grid, v)
-labelGrid' grid x y v = let
-        (x', y') =
-            case (x, y) of
-                (i, 127) -> (i+1, 0)
-                (i, j)   -> (i, j+1)
-        (cell, incV) = label grid x y v
-        v' = if incV then (v + 1) else v
-        grid' = grid // [(x, row)]
-        row = (grid ! x) // [(y, cell)]
-    in
-    labelGrid' grid' x' y' v'
+step :: Grid a -> Point -> Point
+step grid (x,y)
+    | y == (length grid - 1) = (x+1, 0)
+    | otherwise              = (x, y+1)
 
-label :: Vector (Vector Cell) -> Int -> Int -> Counter -> (Cell, Bool)
--- Checks previously-processed cells to determine this cell's value.
--- Returns the cell's value and whether `v` should be incremented.
-label grid x y v =
-    let
-        me   =                   index grid x y
-        left = if (x-1 >= 0) then index grid (x-1) y else Free
-        up   = if (y-1 >= 0) then index grid x (y-1) else Free
-    in
-    case me of
-        Used ->
-            case (up, left) of
-                (Group n, _) -> (Group n, False)
-                (_, Group n) -> (Group n, False)
-                _            -> (Group v, True)
-        Free ->
-            (me, False)
-        _ -> error $ Prelude.concat
-            [ "Crashed. "
-            , show left
-            , ","
-            , show up
-            , " ("
-            , show x
-            , ","
-            , show y
-            , ")"
-            ]
+labelGrid :: Grid Cell -> Point -> Int -> Int
+labelGrid grid p@(x,y) counter
+    | x == (length grid)       = counter
+    | index grid p == Free = labelGrid grid (step grid p) counter
+    | otherwise = labelGrid grid' (step grid p) (counter + 1)
+        where
+            found = dfs grid [p] []
+            grid' = markFree found grid
 
+markFree :: [Point] -> Grid Cell -> Grid Cell
+-- TODO: Mark all points in `found` as Free
+markFree found = id
+
+dfs :: Grid Cell -> [Point] -> [Point] -> [Point]
+dfs grid (q:qs) found =
+    -- TODO: Run a DFS from `p` that only visits neighbours if they're used.
+    found
 
 main = do
     let example = "flqrgnkx"
@@ -94,9 +74,5 @@ main = do
     let grid = makeGrid $ fromList example
     putStrLn "Soln1"
     print $ sum $ map (length . filter (== Used)) grid
-    putStrLn "Soln2"
-    let (regions, nRegions) = labelGrid grid
-    V.forM_ regions (print)
-    print nRegions
 
 
