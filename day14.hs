@@ -4,7 +4,7 @@ import KnotHash
 import Control.Monad as M
 import Data.Vector as V
 import qualified Data.List as L
-import Prelude hiding (map, filter, length, (++), concatMap, sum, take)
+import Prelude hiding (map, filter, length, (++), concatMap, sum)
 
 -----------------------------------------
 -- Part 1
@@ -13,13 +13,13 @@ data Cell = Free | Used deriving (Eq)
 
 makeGrid s = map (toRow . makeInput) (fromList [0..127]) where
     makeInput i =
-        s ++ singleton '-' ++ (fromList $ show i)
+        s ++ singleton '-' ++ fromList (show i)
     toRow =
-        (concatMap (fromList . (L.map f) . hexToBin)) . (fromList . knotHash . toList)
-    f = \case
+        concatMap (fromList . L.map bitToCell . hexToBits) . fromList . knotHash . toList
+    bitToCell = \case
         '0' -> Free
         '1' -> Used
-    hexToBin = \case
+    hexToBits = \case
         '0' -> "0000"
         '1' -> "0001"
         '2' -> "0010"
@@ -53,9 +53,9 @@ countCC grid =
     countCC' grid (0,0) 1
         where
             countCC' grid p@(x,y) counter
-                | x == (length grid)       = counter - 1
+                | x == length grid   = counter - 1
                 | get grid p == Free = countCC' grid (step grid p) counter
-                | otherwise = countCC' grid' (step grid p) (counter + 1)
+                | otherwise          = countCC' grid' (step grid p) (counter + 1)
                     where
                         grid' = dfs grid p
 
@@ -71,21 +71,16 @@ dfs grid p@(x,y)
     | get grid p == Free = grid
     | otherwise =
         let
-            dirs =
-                [ (x+1,y)
-                , (x-1,y)
-                , (x,y+1)
-                , (x,y-1)
-                ]
-            pointFilter (x,y) =
-                   x >= 0
+            possibleNeighbours = [ (x+1,y), (x-1,y), (x,y+1), (x,y-1) ]
+            isWithinBounds (x,y) =
+                x >= 0
                 && y >= 0
                 && x < length grid
                 && y < length grid
-            validDirs = L.filter pointFilter dirs
+            neighbours = L.filter isWithinBounds possibleNeighbours
             grid' = set grid p Free
         in
-        L.foldl dfs grid' validDirs
+        L.foldl dfs grid' neighbours
 
 main = do
     let example = "flqrgnkx"
