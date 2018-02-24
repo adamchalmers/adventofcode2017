@@ -1,17 +1,28 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE QuasiQuotes #-}
 
+import Control.Monad
 import Data.Char (isAlpha)
 import Data.List as L
-import Data.Map as M
+import Data.Map.Strict as M hiding ((!))
+import Data.Maybe
 import Data.String.QQ
+import Data.Vector as V
 
 -------------------------------------------------------------------------------
 -- Parsing
 -------------------------------------------------------------------------------
 
-data Val = Reg Register | Qty Int
+data Val
+    = Reg Register -- Value is read from register
+    | Qty Int      -- Value is a literal
+
 type Register = Char
+
+instance Read Val where
+    readsPrec _ s =
+        if isAlpha (L.head s)
+        then [(Reg (L.head s), "")]
+        else [(Qty (read s), "")]
 
 data Instruction
     = Snd Val
@@ -22,72 +33,100 @@ data Instruction
     | Rcv Val
     | Jgz Val Val
 
-parseValue :: String -> Val
-parseValue s
-    | isAlpha (head s) = Reg (head s)
-    | otherwise        = Qty (read s)
-
-parseInstruction :: String -> Instruction
-parseInstruction s = case op of
-    "snd" -> Snd $ parseValue fst
-    "set" -> Set (head fst) snd
-    "add" -> Add (head fst) snd
-    "mul" -> Mul (head fst) snd
-    "mod" -> Mod (head fst) snd
-    "rcv" -> Rcv $ parseValue fst
-    "jgz" -> Jgz (parseValue fst) snd
-    where
-        op = head . words $ s
-        fst = (!! 1) . words $ s
-        snd = parseValue . (!! 2) . words $ s
+instance Read Instruction where
+    readsPrec _ s = [(instr, "")]
+        where
+            instr = case L.head $ words s of
+                "snd" -> Snd $ read fst
+                "set" -> Set (L.head fst) snd
+                "add" -> Add (L.head fst) snd
+                "mul" -> Mul (L.head fst) snd
+                "mod" -> Mod (L.head fst) snd
+                "rcv" -> Rcv $ read fst
+                "jgz" -> Jgz (read fst) snd
+            fst = (!! 1) . words $ s
+            snd = read . (!! 2) . words $ s
 
 -------------------------------------------------------------------------------
 -- Simulating
 -------------------------------------------------------------------------------
 
 data State = State
-    { regs :: Map Register Int
-    , line :: Int
-    , lastSound :: Int
-    , lastRecover :: Int
-    }
+    { registers    :: Map Register Int
+    , line         :: Int
+    , lastSound    :: Int
+    , lastRecover  :: Int
+    , firstRecover :: Maybe Int
+    } deriving (Show)
 
 initState = State
-    { regs=M.fromList []
-    , line=0
-    , lastSound=0
-    , lastRecover=0}
+    { registers     = M.fromList []
+    , line          = 0
+    , lastSound     = 0
+    , lastRecover   = 0
+    , firstRecover  = Nothing
+    }
 
-exec :: State -> Instruction -> State
-exec s = \case
+exec instructions s = s' { line = line s' + 1 }
+    where s' = exec' instructions s
+
+exec' :: Vector Instruction -> State -> State
+exec' instructions s = case instructions ! line s of
     Snd v ->
         s { lastSound = val v}
     Set reg v ->
-        s { regs = M.insert reg (val v) (regs s)}
+        s { registers = M.insert reg (val v) (registers s)}
     Add reg v ->
-        s { regs = M.insertWith (+) reg (val v) (regs s)}
+        s { registers = insertWithDefault 0 (+) reg (val v) (registers s)}
     Mul reg v ->
-        s { regs = M.insertWith (*) reg (val v) (regs s)}
+        s { registers = insertWithDefault 0 (*) reg (val v) (registers s)}
     Mod reg v ->
-        s { regs = M.insertWith rem reg (val v) (regs s)}
-    Rcv v ->
-        if (val v) /= 0
-        then s { lastRecover = (lastSound s) }
-        else s
+        s { registers = insertWithDefault 0 (flip rem) reg (val v) (registers s)}
+    Rcv v
+        | val v == 0                 -> s
+        | isNothing $ firstRecover s -> s { lastRecover = lastSound s
+                                          , firstRecover = Just $ lastSound s
+                                          }
+        | otherwise                  -> s { lastRecover = lastSound s }
     Jgz v offset ->
-        if (val v) > 0
-        then s { line = (val offset) + (line s) }
+        if val v > 0
+        then s { line = val offset + line s - 1 }
         else s
     where
-        val (Reg register) = findWithDefault 0 register (regs s)
+        val (Reg register) = findWithDefault 0 register $ registers s
         val (Qty i) = i
 
+insertWithDefault :: (Ord k) => a -> (a -> a -> a) -> k -> a -> Map k a -> Map k a
+insertWithDefault defaultVal f key val1 someMap =
+    M.insert key (f val1 val2) someMap
+    where
+        val2 = findWithDefault defaultVal key someMap
+
+runSimUntil :: (State -> Bool) -> Vector Instruction -> State -> State
+runSimUntil pred instructions s =
+    if (currLine >= 0) && (currLine < V.length instructions) && pred s
+    then runSimUntil pred instructions (exec instructions s)
+    else s
+    where
+        currLine = line s
+
 main = do
-    let instructions = L.map parseInstruction . lines $ problemInput
-    let after = L.foldl exec initState instructions
-    putStrLn $ "Soln 1: " ++ (show $ lastSound after)
+    let instructions = V.fromList . L.map read . lines $ problemInput
+    print $ runSimUntil (isNothing . firstRecover) instructions initState
 
+testInput :: String
+testInput = [s|set a 1
+add a 2
+mul a a
+mod a 5
+snd a
+set a b
+rcv a
+jgz a -1
+set a 1
+jgz a -2|]
 
+problemInput :: String
 problemInput = [s|set i 31
 set a 1
 mul p 17
